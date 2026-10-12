@@ -19,12 +19,6 @@
 
 ## 1. Запустить MySQL
 
-Если MySQL ещё не установлена:
-
-```sh
-brew install mysql
-```
-
 Запустите сервер и откройте консоль администратора:
 
 ```sh
@@ -56,8 +50,6 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r backend/requirements.txt
 ```
 
-В Fish активируйте окружение командой `source .venv/bin/activate.fish`.
-В bash или zsh команда — `source .venv/bin/activate`.
 
 ## 3. Настроить подключение
 
@@ -91,19 +83,6 @@ Flask CLI загружает `.env` автоматически благодар�
 Признак `is_builtin` отличает начальные рецепты от пользовательских.
 Название ограничено 255 символами, ингредиенты и шаги — 10 000 символами каждый.
 
-### Обновление существующей установки
-
-Если таблица была создана до появления редактирования, выполните в консоли root:
-
-```sql
-ALTER TABLE recipes.recipes ADD COLUMN is_builtin BOOLEAN NOT NULL DEFAULT FALSE;
-GRANT UPDATE, DELETE ON recipes.recipes TO 'recipes_app'@'localhost';
-```
-
-`ALTER TABLE` требуется только при отсутствии столбца `is_builtin`.
-Затем выполните `.venv/bin/flask --app backend.app init-db` и перезапустите Flask.
-Команда помечает исходные рецепты по их первоначальным ID и содержимому.
-Остальные существующие записи остаются пользовательскими, их текст не изменяется.
 
 ## 5. Запустить приложение
 
@@ -114,6 +93,44 @@ GRANT UPDATE, DELETE ON recipes.recipes TO 'recipes_app'@'localhost';
 Откройте [http://127.0.0.1:5000](http://127.0.0.1:5000).
 Если порт 5000 занят, укажите, например, `--port 8000` и откройте соответствующий адрес.
 Flask запускается без отладчика. Для остановки нажмите Ctrl+C.
+
+## Запуск в Windows (PowerShell)
+
+Установите MySQL Server 8.4 через [официальный MySQL Installer](https://dev.mysql.com/downloads/installer/)
+и настройте сервер как службу. Имя службы зависит от параметров установки:
+
+```powershell
+Get-Service *MySQL*
+Start-Service MySQL
+```
+
+Если служба называется иначе, подставьте имя из `Get-Service`. Запуск службы
+может потребовать PowerShell от имени администратора. Откройте консоль MySQL
+под root; если `mysql` не добавлен в `PATH`, используйте полный путь:
+
+```powershell
+mysql -u root -p
+# либо для стандартного каталога установки:
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -u root -p
+```
+
+В консоли выполните SQL из шага 1 выше, затем из корня проекта настройте Python
+и приложение:
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+Copy-Item .env.example .env  # только если файла .env ещё нет
+notepad .env
+.\.venv\Scripts\flask.exe --app backend.app init-db
+.\.venv\Scripts\flask.exe --app backend.app run --host 127.0.0.1 --port 5000
+```
+
+В `.env` укажите пароль пользователя `recipes_app`. Активация окружения не нужна;
+если всё же активируете его командой `.\.venv\Scripts\Activate.ps1`, далее можно
+вызывать `python` и `flask` без полных путей. Команды `chmod` в Windows нет,
+поэтому настройка прав файла из шага 3 пропускается. Откройте
+[http://127.0.0.1:5000](http://127.0.0.1:5000); для остановки нажмите Ctrl+C.
 
 ## Проверка для отчёта
 
@@ -134,9 +151,6 @@ mysql -h 127.0.0.1 -u recipes_app -p recipes
 ```sql
 SELECT id, title FROM recipes ORDER BY id DESC;
 ```
-
-Для отчёта приложите ссылку на репозиторий, этот README и скриншот страницы
-с добавленным рецептом. Пример интерфейса: [скриншот](docs/screenshot.jpg).
 
 ## API
 
@@ -163,29 +177,4 @@ curl -i http://127.0.0.1:5000/api/recipes \
 400; запрос без JSON — 415; слишком большой запрос — 413; ошибка MySQL — 503.
 SQL-запросы используют параметры, а фронтенд выводит пользовательский текст
 через `textContent`, чтобы содержимое рецептов не исполнялось как HTML.
-
-## Тесты
-
-Базовые проверки без подключения к БД:
-
-```sh
-.venv/bin/python -m unittest discover -s tests -v
-```
-
-Для проверки с настоящей MySQL создайте отдельную тестовую базу через root:
-
-```sql
-CREATE DATABASE recipes_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-GRANT SELECT, INSERT, UPDATE, DELETE, CREATE ON recipes_test.recipes TO 'recipes_app'@'localhost';
-```
-
-Запустите тесты командой `env`, которая работает и в Fish:
-
-```sh
-env MYSQL_TEST_DATABASE=recipes_test .venv/bin/python -m unittest discover -s tests -v
-```
-
-Тесты проверяют начальную загрузку, добавление, редактирование и удаление рецепта,
-сохранение через новое соединение и защиту начальных рецептов. Удаляют только
-записи, которые сами создали. Имя тестовой базы должно заканчиваться на `_test`.
 
