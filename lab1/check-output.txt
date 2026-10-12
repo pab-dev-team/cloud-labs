@@ -1,0 +1,43 @@
+HTTP → HTTPS
+HTTP/1.1 301 Moved Permanently
+Server: nginx/1.31.6
+Date: Mon, 12 Oct 2026 11:28:21 GMT
+Content-Type: text/html
+Content-Length: 169
+Connection: keep-alive
+Location: https://localhost/
+
+Статика через alias
+HTTP/1.1 200 OK
+Server: nginx/1.31.6
+Date: Mon, 12 Oct 2026 11:28:21 GMT
+Content-Type: text/css
+Content-Length: 5575
+Last-Modified: Mon, 12 Oct 2026 10:27:39 GMT
+Connection: keep-alive
+ETag: "6accb61b-15c7"
+Accept-Ranges: bytes
+
+Балансировка
+X-Backend-ID: backend-2
+X-Backend-ID: backend-1
+X-Backend-ID: backend-2
+Basic Auth без пароля — ожидается 401
+status=401
+404
+status=404
+Второй виртуальный хост — ожидается 200
+status=200
+Неизвестный домен — ожидается 404
+status=404
+Лимит запросов — среди ответов ожидается 429
+429
+429
+429
+429
+429
+429
+429
+429
+429
+429

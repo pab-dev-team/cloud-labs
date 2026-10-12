@@ -19,6 +19,11 @@ app.config.update(
 )
 app.json.ensure_ascii = False
 
+@app.after_request
+def identify_backend(response):
+    response.headers["X-Backend-ID"] = os.environ.get("BACKEND_ID", "local")
+    return response
+
 
 def get_db():
     return mysql.connector.connect(
