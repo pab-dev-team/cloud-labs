@@ -5,6 +5,9 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import mysql.connector
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from backend.app import app, get_db
 

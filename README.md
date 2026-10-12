@@ -51,9 +51,11 @@ EXIT;
 
 ```sh
 python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r backend/requirements.txt
+.venv/bin/python -m pip install -r backend/requirements.txt
 ```
+
+В Fish активируйте окружение командой `source .venv/bin/activate.fish`.
+В bash или zsh команда — `source .venv/bin/activate`.
 
 ## 3. Настроить подключение
 
@@ -66,24 +68,17 @@ chmod 600 .env
 
 Откройте `.env` и замените `MYSQL_PASSWORD` паролем созданного пользователя.
 При необходимости измените адрес, порт или имя базы. Если пароль содержит
-специальные символы оболочки, заключите значение в одинарные кавычки.
+специальные символы, заключите значение в одинарные кавычки.
 `.env` исключён из Git; реальные пароли не нужно коммитить.
 
-Загрузите настройки в окружение текущего терминала:
-
-```sh
-set -a
-source .env
-set +a
-```
-
-Файл `.env` не загружается приложением автоматически. В новом терминале
-повторите активацию `.venv` и загрузку окружения.
+Flask CLI загружает `.env` автоматически благодаря `python-dotenv`.
+Пароль не нужно вручную задавать в оболочке. Поэтому после настройки достаточно
+выполнять показанные ниже команды `flask` из каталога проекта.
 
 ## 4. Создать таблицу и загрузить начальные рецепты
 
 ```sh
-flask --app backend.app init-db
+.venv/bin/flask --app backend.app init-db
 ```
 
 Команда создаёт таблицу `recipes` и добавляет три рецепта, если таблица пустая:
@@ -96,7 +91,7 @@ flask --app backend.app init-db
 ## 5. Запустить приложение
 
 ```sh
-flask --app backend.app run --host 127.0.0.1 --port 5000
+.venv/bin/flask --app backend.app run --host 127.0.0.1 --port 5000
 ```
 
 Откройте [http://127.0.0.1:5000](http://127.0.0.1:5000).
@@ -147,7 +142,7 @@ SQL-запросы используют параметры, а фронтенд 
 Базовые проверки без подключения к БД:
 
 ```sh
-python -m unittest discover -s tests -v
+.venv/bin/python -m unittest discover -s tests -v
 ```
 
 Для проверки с настоящей MySQL создайте отдельную тестовую базу через root:
@@ -157,10 +152,10 @@ CREATE DATABASE recipes_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 GRANT SELECT, INSERT, DELETE, CREATE ON recipes_test.* TO 'recipes_app'@'localhost';
 ```
 
-После загрузки `.env` запустите:
+Запустите тесты командой `env`, которая работает и в Fish:
 
 ```sh
-MYSQL_TEST_DATABASE=recipes_test python -m unittest discover -s tests -v
+env MYSQL_TEST_DATABASE=recipes_test .venv/bin/python -m unittest discover -s tests -v
 ```
 
 Тест проверяет повторную начальную загрузку и сохранение рецепта через API,
