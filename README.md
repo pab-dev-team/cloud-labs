@@ -167,30 +167,3 @@ MYSQL_TEST_DATABASE=recipes_test python -m unittest discover -s tests -v
 затем читает его через новое соединение. Удаляет только запись, которую сам
 создал. Имя тестовой базы должно заканчиваться на `_test`.
 
-## Структура и следующие лабораторные
-
-```text
-backend/
-  app.py             # API, подключение к MySQL и команда init-db
-  requirements.txt   # Зафиксированные зависимости
-frontend/
-  index.html         # Страница и форма
-  style.css          # Оформление
-  app.js             # Чтение и добавление через fetch
-tests/
-  test_app.py
-.env.example
-README.md
-```
-
-JavaScript использует относительный адрес `/api/recipes`. В лабе 1 nginx будет
-отдавать `index.html` на `/`, файлы фронтенда на `/static/` и проксировать `/api/`
-на Flask без удаления префикса. В лабе 2 это будут отдельные сервисы nginx,
-Flask и MySQL. Параметры подключения уже вынесены в окружение.
-
-Текущий запуск рассчитан на локальную лабораторную. Перед публикацией нужны
-сервер WSGI вместо сервера разработки Flask и контроль доступа, если рецепты
-должны быть личными.
-
-Документация: [Flask и JavaScript](https://flask.palletsprojects.com/en/stable/patterns/javascript/),
-[подключение MySQL Connector/Python](https://dev.mysql.com/doc/connector-python/en/connector-python-example-connecting.html).
