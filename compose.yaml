@@ -1,0 +1,40 @@
+services:
+  web:
+    build: .
+    ports:
+      - "127.0.0.1:${APP_PORT:-8000}:5000"
+    environment:
+      MYSQL_HOST: db
+      MYSQL_PORT: "3306"
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-recipes}
+      MYSQL_USER: ${MYSQL_USER:-recipes_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-recipes-local-password}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/api/recipes', timeout=3).read()"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  db:
+    image: mysql:8.4
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-recipes}
+      MYSQL_USER: ${MYSQL_USER:-recipes_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-recipes-local-password}
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysql --protocol=TCP -h 127.0.0.1 -u \"$${MYSQL_USER}\" -p\"$${MYSQL_PASSWORD}\" \"$${MYSQL_DATABASE}\" -e 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  mysql-data:
