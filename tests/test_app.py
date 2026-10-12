@@ -76,11 +76,10 @@ class MySQLTests(unittest.TestCase):
         if result.exit_code:
             raise RuntimeError(result.output)
 
-    def test_seed_is_repeatable_and_recipe_survives_new_connection(self):
+    def test_init_is_repeatable_and_recipe_survives_new_connection(self):
         client = app.test_client()
         initial = client.get("/api/recipes")
         self.assertEqual(initial.status_code, 200)
-        self.assertGreaterEqual(len(initial.json), 3)
         result = app.test_cli_runner().invoke(args=["init-db"])
         self.assertEqual(result.exit_code, 0, result.output)
         self.assertEqual(client.get("/api/recipes").json, initial.json)
@@ -95,10 +94,12 @@ class MySQLTests(unittest.TestCase):
         recipe_id = response.json["id"]
         try:
             with get_db() as db, db.cursor(dictionary=True) as cursor:
-                cursor.execute("SELECT * FROM recipes WHERE id = %s", (recipe_id,))
+                cursor.execute("SELECT id, title, ingredients, instructions FROM recipes WHERE id = %s", (recipe_id,))
                 stored = cursor.fetchone()
             expected = {key: value.strip() for key, value in payload.items()}
-            self.assertEqual(stored, {"id": recipe_id, "is_builtin": False, **expected})
+            self.assertEqual(stored, {"id": recipe_id, **expected})
+            result = app.test_cli_runner().invoke(args=["init-db"])
+            self.assertEqual(result.exit_code, 0, result.output)
             recipes = app.test_client().get("/api/recipes").json
             self.assertIn(stored, recipes)
         finally:
@@ -106,24 +107,16 @@ class MySQLTests(unittest.TestCase):
                 cursor.execute("DELETE FROM recipes WHERE id = %s", (recipe_id,))
                 db.commit()
 
-    def test_update_delete_and_builtin_protection(self):
+    def test_update_and_delete(self):
         client = app.test_client()
         before = client.get("/api/recipes").json
-        builtin = next(recipe for recipe in before if recipe["is_builtin"])
         payload = {
             "title": f"Проверка редактирования {uuid4()}",
             "ingredients": "Вода — 100 мл",
             "instructions": "Налить воду.",
-            "is_builtin": False,
         }
-        builtin_path = f'/api/recipes/{builtin["id"]}'
-        self.assertEqual(client.put(builtin_path, json=payload).status_code, 403)
-        self.assertEqual(client.delete(builtin_path).status_code, 403)
-        self.assertEqual(client.get("/api/recipes").json, before)
-
-        created = client.post("/api/recipes", json={**payload, "is_builtin": True})
+        created = client.post("/api/recipes", json=payload)
         self.assertEqual(created.status_code, 201)
-        self.assertFalse(created.json["is_builtin"])
         recipe_id = created.json["id"]
         path = f"/api/recipes/{recipe_id}"
         try:

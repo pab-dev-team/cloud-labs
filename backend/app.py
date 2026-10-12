@@ -41,7 +41,7 @@ def index():
 def list_recipes():
     with get_db() as db, db.cursor(dictionary=True) as cursor:
         cursor.execute(
-            "SELECT id, title, ingredients, instructions, is_builtin FROM recipes ORDER BY id DESC"
+            "SELECT id, title, ingredients, instructions FROM recipes ORDER BY id DESC"
         )
         return jsonify(cursor.fetchall())
 
@@ -81,7 +81,6 @@ def add_recipe():
         )
         recipe["id"] = cursor.lastrowid
         db.commit()
-    recipe["is_builtin"] = False
     return jsonify(recipe), 201
 
 
@@ -89,12 +88,10 @@ def add_recipe():
 def change_recipe(recipe_id):
     recipe = read_recipe() if request.method == "PUT" else None
     with get_db() as db, db.cursor(dictionary=True) as cursor:
-        cursor.execute("SELECT is_builtin FROM recipes WHERE id = %s FOR UPDATE", (recipe_id,))
+        cursor.execute("SELECT id FROM recipes WHERE id = %s FOR UPDATE", (recipe_id,))
         existing = cursor.fetchone()
         if existing is None:
             abort(404, description="Рецепт не найден.")
-        if existing["is_builtin"]:
-            abort(403, description="Начальные рецепты нельзя редактировать или удалять.")
         if request.method == "DELETE":
             cursor.execute("DELETE FROM recipes WHERE id = %s", (recipe_id,))
             db.commit()
@@ -104,7 +101,7 @@ def change_recipe(recipe_id):
             (recipe["title"], recipe["ingredients"], recipe["instructions"], recipe_id),
         )
         db.commit()
-    return jsonify(id=recipe_id, is_builtin=False, **recipe)
+    return jsonify(id=recipe_id, **recipe)
 
 
 @app.errorhandler(mysql.connector.Error)
@@ -123,30 +120,7 @@ def http_error(error):
 
 @app.cli.command("init-db")
 def init_db():
-    """Create the recipe table and seed an empty collection."""
-    seeds = (
-        (
-            "Овсяная каша с яблоком",
-            "Овсяные хлопья — 50 г\nМолоко — 200 мл\nЯблоко — 1 шт.\nКорица — по вкусу",
-            "1. Доведите молоко до кипения.\n2. Добавьте хлопья и варите 5–7 минут, помешивая.\n"
-            "3. Нарежьте яблоко и добавьте в кашу.\n4. Посыпьте корицей и подавайте.",
-        ),
-        (
-            "Омлет с помидорами",
-            "Яйца — 2 шт.\nМолоко — 2 ст. л.\nПомидор — 1 шт.\nМасло — 1 ч. л.\nСоль — по вкусу",
-            "1. Взбейте яйца с молоком и солью.\n2. Нарежьте помидор.\n"
-            "3. Разогрейте масло на сковороде и обжарьте помидор 2 минуты.\n"
-            "4. Влейте яичную смесь и готовьте под крышкой до полной готовности яиц.",
-        ),
-        (
-            "Паста с томатным соусом",
-            "Паста — 200 г\nТоматы в собственном соку — 300 г\nЧеснок — 2 зубчика\n"
-            "Оливковое масло — 1 ст. л.\nСоль и базилик — по вкусу",
-            "1. Отварите пасту по инструкции на упаковке.\n"
-            "2. Измельчите чеснок и прогрейте в масле 30 секунд.\n"
-            "3. Добавьте томаты и тушите 10 минут.\n4. Посолите, добавьте базилик и смешайте с пастой.",
-        ),
-    )
+    """Create the recipe table without adding recipes."""
     try:
         with get_db() as db, db.cursor() as cursor:
             cursor.execute(
@@ -154,28 +128,12 @@ def init_db():
                 "id INT AUTO_INCREMENT PRIMARY KEY, "
                 "title VARCHAR(255) NOT NULL, "
                 "ingredients TEXT NOT NULL, "
-                "instructions TEXT NOT NULL, "
-                "is_builtin BOOLEAN NOT NULL DEFAULT FALSE"
+                "instructions TEXT NOT NULL"
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
             )
-            cursor.execute("SHOW COLUMNS FROM recipes LIKE 'is_builtin'")
-            if cursor.fetchone() is None:
-                cursor.execute("ALTER TABLE recipes ADD COLUMN is_builtin BOOLEAN NOT NULL DEFAULT FALSE")
-            # Legacy seeds were inserted first; matching their content preserves user recipes.
-            cursor.executemany(
-                "UPDATE recipes SET is_builtin = TRUE WHERE id = %s "
-                "AND title = %s AND ingredients = %s AND instructions = %s",
-                [(recipe_id, *recipe) for recipe_id, recipe in enumerate(seeds, 1)],
-            )
-            cursor.execute("SELECT COUNT(*) FROM recipes")
-            if cursor.fetchone()[0] == 0:
-                cursor.executemany(
-                    "INSERT INTO recipes (title, ingredients, instructions, is_builtin) VALUES (%s, %s, %s, TRUE)",
-                    seeds,
-                )
             db.commit()
     except mysql.connector.Error as error:
         raise click.ClickException(
             "Не удалось подготовить БД. Проверьте MySQL и переменные окружения."
         ) from error
-    click.echo("Таблица рецептов готова. Начальные рецепты добавлены, если таблица была пустой.")
+    click.echo("Таблица рецептов готова. Рецепты добавляются только через форму.")

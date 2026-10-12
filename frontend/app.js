@@ -35,7 +35,6 @@ function recipeCard(recipe) {
   card.querySelector(".recipe-title").textContent = recipe.title;
   card.querySelector(".recipe-ingredients").textContent = recipe.ingredients;
   card.querySelector(".recipe-instructions").textContent = recipe.instructions;
-  card.querySelector(".recipe-actions").hidden = Boolean(recipe.is_builtin);
   card.querySelector(".edit-recipe").addEventListener("click", () => {
     editingId = recipe.id;
     for (const field of ["title", "ingredients", "instructions"]) {
