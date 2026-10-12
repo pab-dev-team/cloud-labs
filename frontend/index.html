@@ -49,7 +49,8 @@
           <label for="instructions">Шаги приготовления</label>
           <textarea id="instructions" name="instructions" rows="6" maxlength="10000" placeholder="1. Смешайте ингредиенты.&#10;2. Сформируйте сырники.&#10;3. Обжарьте до готовности." required></textarea>
 
-          <button id="submit-recipe" type="submit" disabled>Сохранить рецепт <span aria-hidden="true">↗</span></button>
+          <button id="submit-recipe" type="submit" disabled><span id="submit-label">Сохранить рецепт</span> <span aria-hidden="true">↗</span></button>
+          <button id="cancel-edit" class="secondary" type="button" hidden>Отменить редактирование</button>
           <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
         </form>
       </aside>
@@ -57,6 +58,16 @@
   </main>
 
   <footer>Книга рецептов <span aria-hidden="true">·</span> Готовьте то, что любите.</footer>
+
+  <dialog id="delete-dialog" aria-labelledby="delete-title" aria-describedby="delete-description">
+    <h2 id="delete-title">Удалить рецепт?</h2>
+    <p id="delete-description"></p>
+    <p>Это действие нельзя отменить.</p>
+    <form method="dialog" class="recipe-actions">
+      <button class="secondary" value="cancel" autofocus>Отмена</button>
+      <button class="secondary delete-recipe" value="delete">Удалить рецепт</button>
+    </form>
+  </dialog>
 
   <template id="recipe-template">
     <article class="recipe-card">
@@ -68,6 +79,10 @@
         <summary>Как приготовить</summary>
         <p class="recipe-instructions"></p>
       </details>
+      <div class="recipe-actions" hidden>
+        <button class="edit-recipe secondary" type="button">Редактировать</button>
+        <button class="delete-recipe secondary" type="button">Удалить</button>
+      </div>
     </article>
   </template>
 </body>

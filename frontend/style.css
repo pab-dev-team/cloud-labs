@@ -12,6 +12,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; }
 a { color: inherit; }
 .header, main, footer { width: min(1200px, calc(100% - 80px)); margin-inline: auto; }
@@ -51,6 +52,14 @@ textarea { resize: vertical; min-height: 110px; }
 button { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; border: 0; border-radius: 7px; background: var(--green); color: #fff; padding: 15px 17px; margin-top: 22px; cursor: pointer; font-size: 13px; font-weight: 600; }
 button:hover { background: #263e2e; }
 button:disabled { opacity: .6; cursor: wait; }
+.secondary { background: transparent; color: var(--green); border: 1px solid #c8cec2; }
+.secondary:hover { background: #dde4d6; }
+.recipe-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.recipe-actions button { width: auto; margin-top: 0; padding: 9px 11px; font-size: 12px; }
+.delete-recipe { color: #9b2626; }
+dialog { width: min(440px, calc(100% - 32px)); padding: 28px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); }
+dialog::backdrop { background: rgb(37 47 41 / 45%); }
+dialog p { font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
 :focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
 .form-status { margin: 12px 0 0; font-size: 13px; line-height: 1.6; color: var(--green); }
 .form-status:empty { display: none; }

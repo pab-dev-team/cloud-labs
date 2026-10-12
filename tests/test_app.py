@@ -30,13 +30,14 @@ class ApiTests(unittest.TestCase):
         invalid = [None, [], "recipe", {}, {**valid, "title": "   "}]
         for field, limit in (("title", 255), ("ingredients", 10000), ("instructions", 10000)):
             invalid.extend(({**valid, field: 42}, {**valid, field: "я" * (limit + 1)}))
-        for payload in invalid:
-            with self.subTest(payload=str(payload)[:80]):
-                response = self.client.post(
-                    "/api/recipes", data=json.dumps(payload), content_type="application/json"
-                )
-                self.assertEqual(response.status_code, 400)
-                self.assertIn("error", response.json)
+        for method, path in (("POST", "/api/recipes"), ("PUT", "/api/recipes/1")):
+            for payload in invalid:
+                with self.subTest(method=method, payload=str(payload)[:80]):
+                    response = self.client.open(
+                        path, method=method, data=json.dumps(payload), content_type="application/json"
+                    )
+                    self.assertEqual(response.status_code, 400)
+                    self.assertIn("error", response.json)
         connect.assert_not_called()
 
     def test_only_json_posts_are_accepted(self):
@@ -97,9 +98,52 @@ class MySQLTests(unittest.TestCase):
                 cursor.execute("SELECT * FROM recipes WHERE id = %s", (recipe_id,))
                 stored = cursor.fetchone()
             expected = {key: value.strip() for key, value in payload.items()}
-            self.assertEqual(stored, {"id": recipe_id, **expected})
+            self.assertEqual(stored, {"id": recipe_id, "is_builtin": False, **expected})
             recipes = app.test_client().get("/api/recipes").json
             self.assertIn(stored, recipes)
+        finally:
+            with get_db() as db, db.cursor() as cursor:
+                cursor.execute("DELETE FROM recipes WHERE id = %s", (recipe_id,))
+                db.commit()
+
+    def test_update_delete_and_builtin_protection(self):
+        client = app.test_client()
+        before = client.get("/api/recipes").json
+        builtin = next(recipe for recipe in before if recipe["is_builtin"])
+        payload = {
+            "title": f"Проверка редактирования {uuid4()}",
+            "ingredients": "Вода — 100 мл",
+            "instructions": "Налить воду.",
+            "is_builtin": False,
+        }
+        builtin_path = f'/api/recipes/{builtin["id"]}'
+        self.assertEqual(client.put(builtin_path, json=payload).status_code, 403)
+        self.assertEqual(client.delete(builtin_path).status_code, 403)
+        self.assertEqual(client.get("/api/recipes").json, before)
+
+        created = client.post("/api/recipes", json={**payload, "is_builtin": True})
+        self.assertEqual(created.status_code, 201)
+        self.assertFalse(created.json["is_builtin"])
+        recipe_id = created.json["id"]
+        path = f"/api/recipes/{recipe_id}"
+        try:
+            updated = client.put(path, json={**payload, "title": "  Обновлённый рецепт 🍲  "})
+            self.assertEqual(updated.status_code, 200)
+            self.assertEqual(updated.json["id"], recipe_id)
+            self.assertEqual(updated.json["title"], "Обновлённый рецепт 🍲")
+            self.assertIn(updated.json, app.test_client().get("/api/recipes").json)
+            repeated = client.put(path, json=updated.json)
+            self.assertEqual(repeated.status_code, 200)
+            self.assertEqual(repeated.json, updated.json)
+
+            invalid = client.put(path, json={**payload, "ingredients": "  "})
+            self.assertEqual(invalid.status_code, 400)
+            self.assertIn(updated.json, client.get("/api/recipes").json)
+
+            self.assertEqual(client.delete(path).status_code, 200)
+            self.assertEqual(client.get("/api/recipes").json, before)
+            self.assertEqual(client.delete(path).status_code, 404)
+            self.assertEqual(client.put(path, json=payload).status_code, 404)
         finally:
             with get_db() as db, db.cursor() as cursor:
                 cursor.execute("DELETE FROM recipes WHERE id = %s", (recipe_id,))

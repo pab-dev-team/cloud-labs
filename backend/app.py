@@ -3,7 +3,7 @@ from pathlib import Path
 
 import click
 import mysql.connector
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, abort, jsonify, request, send_from_directory
 from werkzeug.exceptions import HTTPException
 
 
@@ -41,19 +41,18 @@ def index():
 def list_recipes():
     with get_db() as db, db.cursor(dictionary=True) as cursor:
         cursor.execute(
-            "SELECT id, title, ingredients, instructions FROM recipes ORDER BY id DESC"
+            "SELECT id, title, ingredients, instructions, is_builtin FROM recipes ORDER BY id DESC"
         )
         return jsonify(cursor.fetchall())
 
 
-@app.post("/api/recipes")
-def add_recipe():
+def read_recipe():
     if not request.is_json:
-        return jsonify(error="Отправьте рецепт в формате JSON."), 415
+        abort(415, description="Отправьте рецепт в формате JSON.")
 
     data = request.get_json()
     if not isinstance(data, dict):
-        return jsonify(error="Рецепт должен быть JSON-объектом."), 400
+        abort(400, description="Рецепт должен быть JSON-объектом.")
 
     recipe = {}
     for field, label, limit in (
@@ -63,11 +62,17 @@ def add_recipe():
     ):
         value = data.get(field)
         if not isinstance(value, str) or not value.strip():
-            return jsonify(error=f'Заполните поле «{label}».'), 400
+            abort(400, description=f'Заполните поле «{label}».')
         value = value.strip()
         if len(value) > limit:
-            return jsonify(error=f'Поле «{label}»: максимум {limit} символов.'), 400
+            abort(400, description=f'Поле «{label}»: максимум {limit} символов.')
         recipe[field] = value
+    return recipe
+
+
+@app.post("/api/recipes")
+def add_recipe():
+    recipe = read_recipe()
 
     with get_db() as db, db.cursor() as cursor:
         cursor.execute(
@@ -76,7 +81,30 @@ def add_recipe():
         )
         recipe["id"] = cursor.lastrowid
         db.commit()
+    recipe["is_builtin"] = False
     return jsonify(recipe), 201
+
+
+@app.route("/api/recipes/<int:recipe_id>", methods=["PUT", "DELETE"])
+def change_recipe(recipe_id):
+    recipe = read_recipe() if request.method == "PUT" else None
+    with get_db() as db, db.cursor(dictionary=True) as cursor:
+        cursor.execute("SELECT is_builtin FROM recipes WHERE id = %s FOR UPDATE", (recipe_id,))
+        existing = cursor.fetchone()
+        if existing is None:
+            abort(404, description="Рецепт не найден.")
+        if existing["is_builtin"]:
+            abort(403, description="Начальные рецепты нельзя редактировать или удалять.")
+        if request.method == "DELETE":
+            cursor.execute("DELETE FROM recipes WHERE id = %s", (recipe_id,))
+            db.commit()
+            return jsonify(deleted=recipe_id)
+        cursor.execute(
+            "UPDATE recipes SET title = %s, ingredients = %s, instructions = %s WHERE id = %s",
+            (recipe["title"], recipe["ingredients"], recipe["instructions"], recipe_id),
+        )
+        db.commit()
+    return jsonify(id=recipe_id, is_builtin=False, **recipe)
 
 
 @app.errorhandler(mysql.connector.Error)
@@ -126,13 +154,23 @@ def init_db():
                 "id INT AUTO_INCREMENT PRIMARY KEY, "
                 "title VARCHAR(255) NOT NULL, "
                 "ingredients TEXT NOT NULL, "
-                "instructions TEXT NOT NULL"
+                "instructions TEXT NOT NULL, "
+                "is_builtin BOOLEAN NOT NULL DEFAULT FALSE"
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            )
+            cursor.execute("SHOW COLUMNS FROM recipes LIKE 'is_builtin'")
+            if cursor.fetchone() is None:
+                cursor.execute("ALTER TABLE recipes ADD COLUMN is_builtin BOOLEAN NOT NULL DEFAULT FALSE")
+            # Legacy seeds were inserted first; matching their content preserves user recipes.
+            cursor.executemany(
+                "UPDATE recipes SET is_builtin = TRUE WHERE id = %s "
+                "AND title = %s AND ingredients = %s AND instructions = %s",
+                [(recipe_id, *recipe) for recipe_id, recipe in enumerate(seeds, 1)],
             )
             cursor.execute("SELECT COUNT(*) FROM recipes")
             if cursor.fetchone()[0] == 0:
                 cursor.executemany(
-                    "INSERT INTO recipes (title, ingredients, instructions) VALUES (%s, %s, %s)",
+                    "INSERT INTO recipes (title, ingredients, instructions, is_builtin) VALUES (%s, %s, %s, TRUE)",
                     seeds,
                 )
             db.commit()
