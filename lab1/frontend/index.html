@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Книга рецептов: сохраняйте ингредиенты и шаги приготовления любимых блюд.">
+  <title>Книга рецептов</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="header">
+    <a class="brand" href="/" aria-label="Книга рецептов — главная">
+      <span class="brand-mark" aria-hidden="true">КР</span>
+      Книга рецептов
+    </a>
+    <a class="add-link" href="#new-recipe">+ Добавить рецепт</a>
+  </header>
+
+  <main>
+    <section class="intro" aria-labelledby="page-title">
+      <p class="eyebrow">ГОТОВИМ И СОХРАНЯЕМ</p>
+      <h1 id="page-title">Хорошие рецепты<br>всегда под рукой.</h1>
+      <p class="intro-text">Знакомые блюда и ваши новые находки. Запишите ингредиенты<br class="desktop-break"> и шаги, чтобы в следующий раз не вспоминать на ходу.</p>
+    </section>
+
+    <div class="layout">
+      <section class="collection" aria-labelledby="collection-title">
+        <div class="section-heading">
+          <h2 id="collection-title">Все рецепты</h2>
+          <span class="count" id="recipe-count" aria-label="Количество рецептов">—</span>
+        </div>
+        <p class="list-status" id="list-status" role="status">Загружаем рецепты…</p>
+        <div class="recipes" id="recipes"></div>
+      </section>
+
+      <aside class="form-panel" id="new-recipe" aria-labelledby="form-title">
+        <p class="eyebrow">ПОПОЛНИМ КОЛЛЕКЦИЮ</p>
+        <h2 id="form-title">Ваш рецепт</h2>
+        <p class="form-description">Всё, что нужно, чтобы приготовить ещё раз.</p>
+        <form id="recipe-form">
+          <label for="title">Название блюда</label>
+          <input id="title" name="title" type="text" maxlength="255" placeholder="Например, бабушкины сырники" required>
+
+          <label for="ingredients">Ингредиенты</label>
+          <p class="field-hint" id="ingredients-hint">Каждый ингредиент с новой строки, вместе с количеством.</p>
+          <textarea id="ingredients" name="ingredients" rows="5" maxlength="10000" placeholder="Творог — 400 г&#10;Яйцо — 1 шт.&#10;Мука — 3 ст. л." aria-describedby="ingredients-hint" required></textarea>
+
+          <label for="instructions">Шаги приготовления</label>
+          <textarea id="instructions" name="instructions" rows="6" maxlength="10000" placeholder="1. Смешайте ингредиенты.&#10;2. Сформируйте сырники.&#10;3. Обжарьте до готовности." required></textarea>
+
+          <button id="submit-recipe" type="submit" disabled><span id="submit-label">Сохранить рецепт</span> <span aria-hidden="true">↗</span></button>
+          <button id="cancel-edit" class="secondary" type="button" hidden>Отменить редактирование</button>
+          <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
+        </form>
+      </aside>
+    </div>
+  </main>
+
+  <footer>Книга рецептов <span aria-hidden="true">·</span> Готовьте то, что любите.</footer>
+
+  <dialog id="delete-dialog" aria-labelledby="delete-title" aria-describedby="delete-description">
+    <h2 id="delete-title">Удалить рецепт?</h2>
+    <p id="delete-description"></p>
+    <p>Это действие нельзя отменить.</p>
+    <form method="dialog" class="recipe-actions">
+      <button class="secondary" value="cancel" autofocus>Отмена</button>
+      <button class="secondary delete-recipe" value="delete">Удалить рецепт</button>
+    </form>
+  </dialog>
+
+  <template id="recipe-template">
+    <article class="recipe-card">
+      <p class="recipe-number"></p>
+      <h3 class="recipe-title"></h3>
+      <h4>Ингредиенты</h4>
+      <p class="recipe-ingredients"></p>
+      <details>
+        <summary>Как приготовить</summary>
+        <p class="recipe-instructions"></p>
+      </details>
+      <div class="recipe-actions">
+        <button class="edit-recipe secondary" type="button">Редактировать</button>
+        <button class="delete-recipe secondary" type="button">Удалить</button>
+      </div>
+    </article>
+  </template>
+</body>
+</html>
